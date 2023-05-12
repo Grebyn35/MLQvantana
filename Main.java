@@ -30,13 +30,11 @@ import java.util.List;
 public class Main {
     static int nEpochs = 35;
     static int stepsIntoFuture = 1;
-
-    static double dropout = 0.5;
-
+    static double dropout = 0.2;
     static int lookback = 5;
 
     public static void main(String[] args) throws IOException {
-        ArrayList<Candlestick> candlesticks = returnCandlestickList("bybit", "ethusdt", "5m", "usdt-perpetual", 20000, "2021-00-01%2000:00:00");
+        ArrayList<Candlestick> candlesticks = returnCandlestickList("bybit", "ethusdt", "5m", "usdt-perpetual", 10000, "2021-00-01%2000:00:00");
         trainModel(candlesticks);
     }
     public static void trainModel(ArrayList<Candlestick> candlesticks){
@@ -77,6 +75,8 @@ public class Main {
         List<Double> scores = modelTrainingAndEvaluation.getScores();
         List<Double> trainingErrors = modelTrainingAndEvaluation.getTrainingErrors();
         List<Double> validationErrors = modelTrainingAndEvaluation.getValidationErrors();
+
+        //Save model to file
 
         // Step 6: Predict the test data and rescale
         PredictedAndActualPrices predictedAndActualPrices = predictAndRescalePrices(model, normalizedTestFeatures, normalizedTestLabels, dataNormalization.getTrainLabelMin(), dataNormalization.getTrainLabelMax(), testLabels, testFeatures);
@@ -339,18 +339,18 @@ public class Main {
                         .build())
                 .layer(1, new LSTM.Builder()
                         .nIn(300)
-                        .nOut(600)
+                        .nOut(700)
                         .activation(Activation.TANH)
                         .dropOut(dropout)
                         .build())
                 .layer(2, new LSTM.Builder()
-                        .nIn(600)
-                        .nOut(600)
+                        .nIn(700)
+                        .nOut(700)
                         .activation(Activation.TANH)
                         .dropOut(dropout)
                         .build())
                 .layer(3, new LSTM.Builder()
-                        .nIn(600)
+                        .nIn(700)
                         .nOut(300)
                         .activation(Activation.TANH)
                         .dropOut(dropout)
