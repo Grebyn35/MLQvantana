@@ -36,7 +36,7 @@ public class Main {
     static int lookback = 5;
 
     public static void main(String[] args) throws IOException {
-        ArrayList<Candlestick> candlesticks = returnCandlestickList("bybit", "ethusdt", "5m", "usdt-perpetual", 20000, "2021-00-01%2000:00:00");
+        ArrayList<Candlestick> candlesticks = returnCandlestickList("bybit", "ethusdt", "5m", "usdt-perpetual", 100, "2021-00-01%2000:00:00");
         trainModel(candlesticks);
     }
     public static void trainModel(ArrayList<Candlestick> candlesticks){
@@ -397,10 +397,10 @@ public class Main {
         int iterations = (int) Math.ceil(limit / internalLimit);
         for(int i = 0; i<iterations;i++){
             if(i==0){
-                endpoint = "https://qvantana.herokuapp.com/" + exchange + "/kline?symbol=" + symbol + "&interval=" + interval + "&market=" + market + "&limit=" + (int)internalLimit + "&from=" + from;
+                endpoint = "https://qvantana.herokuapp.com/kline?symbol=" + symbol + "&interval=" + interval + "&exchange=" + exchange + "&market=" + market + "&limit=" + (int)internalLimit + "&from=" + from;
             }
             else{
-                endpoint = "https://qvantana.herokuapp.com/" + exchange + "/kline?symbol=" + symbol + "&interval=" + interval + "&market=" + market + "&limit=" + (int)internalLimit + "&from=" + candlesticks.get(candlesticks.size()-1).getOpenTime();
+                endpoint = "https://qvantana.herokuapp.com/kline?symbol=" + symbol + "&interval=" + interval + "&exchange=" + exchange + "&market=" + market + "&limit=" + (int)internalLimit + "&from=" + candlesticks.get(candlesticks.size()-1).getOpenTime();
             }
             System.out.println(endpoint);
             Document doc = Jsoup.connect(endpoint)
@@ -410,7 +410,7 @@ public class Main {
 
             JsonElement json = JsonParser.parseString(doc.text());
             Gson g = new Gson();
-            JsonElement jsonArrayCandlesticks =  json.getAsJsonArray().getAsJsonArray().get(0).getAsJsonObject().get("data");
+            JsonElement jsonArrayCandlesticks =  json.getAsJsonObject().get("data");
             for (JsonElement candlestickItem : jsonArrayCandlesticks.getAsJsonArray()) {
                 Candlestick candlestick = g.fromJson(candlestickItem, Candlestick.class);
                 if (!candlesticks.contains(candlestick)) {
