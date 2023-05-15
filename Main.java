@@ -29,7 +29,7 @@ import java.util.Arrays;
 import java.util.List;
 
 public class Main {
-    static int nEpochs = 80;
+    static int nEpochs = 120;
     static int stepsIntoFuture = 1;
     static double dropout = 0.00;
     static int lookback = 5;
@@ -180,6 +180,15 @@ public class Main {
         PredictedAndActualPrices predictedAndActualPrices = new PredictedAndActualPrices();
         predictedAndActualPrices.setPredictedPrices(predictedPrices);
         predictedAndActualPrices.setActualPrices(actualPrices);
+        double accuracy = eval.accuracy();
+        double precision = eval.precision();
+        double recall = eval.recall();
+        double f1 = eval.f1();
+
+        System.out.println("Accuracy: " + accuracy);
+        System.out.println("Precision: " + precision);
+        System.out.println("Recall: " + recall);
+        System.out.println("F1 Score: " + f1);
         return predictedAndActualPrices;
     }
     public static ModelTrainingAndEvaluation trainAndEvaluateModel(MultiLayerNetwork model, List<INDArray> normalizedTrainFeatures, List<INDArray> normalizedTrainLabels, List<INDArray> normalizedValidationFeatures, List<INDArray> normalizedValidationLabels, int trainSize){
@@ -300,6 +309,8 @@ public class Main {
         double[] signalLines = macd.getSignalLine();
         double[] histograms = macd.getHistogram();
 
+        System.out.println(candlesticks.size());
+
 
         //Create the features and labels
         for (int j = lookback; j < candlesticks.size() - stepsIntoFuture; j++) {
@@ -391,15 +402,18 @@ public class Main {
     public static ArrayList<Candlestick> returnCandlestickList(String exchange, String symbol, String interval, String market, int limit, String from) throws IOException {
         ArrayList<Candlestick> candlesticks = new ArrayList<>();
         String endpoint;
-        double internalLimit;
+        int iterations = 1;
         if(limit>5000){
-            internalLimit = 5000;
+            iterations = (int) Math.ceil(limit / 5000.0);
         }
-        else{
-            internalLimit = limit;
-        }
-        int iterations = (int) Math.ceil(limit / internalLimit);
         for(int i = 0; i<iterations;i++){
+            double internalLimit;
+            if(limit>5000){
+                internalLimit = 5000;
+            }
+            else{
+                internalLimit = limit;
+            }
             if(i==0){
                 endpoint = "https://qvantana.herokuapp.com/kline?symbol=" + symbol + "&interval=" + interval + "&exchange=" + exchange + "&market=" + market + "&limit=" + (int)internalLimit + "&from=" + from;
             }
@@ -421,6 +435,7 @@ public class Main {
                     candlesticks.add(candlestick);
                 }
             }
+            limit -= jsonArrayCandlesticks.getAsJsonArray().size();
         }
         return candlesticks;
     }
