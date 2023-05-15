@@ -12,6 +12,7 @@ import org.jsoup.nodes.Document;
 import org.knowm.xchart.SwingWrapper;
 import org.knowm.xchart.XYChart;
 import org.knowm.xchart.XYChartBuilder;
+import org.nd4j.evaluation.classification.Evaluation;
 import org.nd4j.evaluation.regression.RegressionEvaluation;
 import org.nd4j.linalg.activations.Activation;
 import org.nd4j.linalg.api.ndarray.INDArray;
@@ -28,13 +29,13 @@ import java.util.Arrays;
 import java.util.List;
 
 public class Main {
-    static int nEpochs = 35;
+    static int nEpochs = 80;
     static int stepsIntoFuture = 1;
-    static double dropout = 0.2;
+    static double dropout = 0.00;
     static int lookback = 5;
 
     public static void main(String[] args) throws IOException {
-        ArrayList<Candlestick> candlesticks = returnCandlestickList("bybit", "ethusdt", "5m", "usdt-perpetual", 100, "2021-00-01%2000:00:00");
+        ArrayList<Candlestick> candlesticks = returnCandlestickList("bybit", "ethusdt", "5m", "usdt-perpetual", 8000, "2021-00-01%2000:00:00");
         trainModel(candlesticks);
     }
     public static void trainModel(ArrayList<Candlestick> candlesticks){
@@ -76,8 +77,10 @@ public class Main {
         List<Double> trainingErrors = modelTrainingAndEvaluation.getTrainingErrors();
         List<Double> validationErrors = modelTrainingAndEvaluation.getValidationErrors();
 
+        //Save model to file
+
         // Step 6: Predict the test data and rescale
-        PredictedAndActualPrices predictedAndActualPrices = predictAndRescalePrices(model, normalizedTestFeatures, normalizedTestLabels, dataNormalization.getTrainLabelMin(), dataNormalization.getTrainLabelMax(), testLabels, testFeatures);
+        PredictedAndActualPrices predictedAndActualPrices = predictAndRescalePrices(model, normalizedTestFeatures, normalizedTestLabels, testLabels);
         List<Double> actualPrices = predictedAndActualPrices.getActualPrices();
         List<Double> predictedPrices = predictedAndActualPrices.getPredictedPrices();
 
@@ -161,19 +164,18 @@ public class Main {
         // Show the chart
         new SwingWrapper<>(chart).displayChart();
     }
-    public static PredictedAndActualPrices predictAndRescalePrices(MultiLayerNetwork model, List<INDArray> normalizedTestFeatures, List<INDArray> normalizedTestLabels, double trainLabelMin, double trainLabelMax, List<INDArray> testLabels, List<INDArray> testFeatures){
+    public static PredictedAndActualPrices predictAndRescalePrices(MultiLayerNetwork model, List<INDArray> normalizedTestFeatures, List<INDArray> normalizedTestLabels, List<INDArray> testLabels){
         List<Double> predictedPrices = new ArrayList<>();
         List<Double> actualPrices = new ArrayList<>();
-        RegressionEvaluation eval = new RegressionEvaluation(1);
+        Evaluation eval = new Evaluation(2);
         //Evaluate the model
-        for (int i = 0; i < testFeatures.size(); i++) {
-            INDArray predicted = model.output(normalizedTestFeatures.get(i).reshape(1, 5, lookback));
+        for (int i = 0; i < normalizedTestFeatures.size(); i++) {
+            INDArray predicted = model.output(normalizedTestFeatures.get(i).reshape(1, 4, lookback));
             eval.eval(normalizedTestLabels.get(i).reshape(1, 1, lookback), predicted);
 
             // Add data to plot
-            double predictedRescaled = predicted.getDouble(0) * (trainLabelMax - trainLabelMin) + trainLabelMin;
-            predictedPrices.add(predictedRescaled);
-            actualPrices.add(testLabels.get(i).reshape(1, 1, lookback).getDouble(0));
+            predictedPrices.add(predicted.getDouble(0));
+            actualPrices.add(testLabels.get(i).getDouble(0));
         }
         PredictedAndActualPrices predictedAndActualPrices = new PredictedAndActualPrices();
         predictedAndActualPrices.setPredictedPrices(predictedPrices);
@@ -183,7 +185,7 @@ public class Main {
     public static ModelTrainingAndEvaluation trainAndEvaluateModel(MultiLayerNetwork model, List<INDArray> normalizedTrainFeatures, List<INDArray> normalizedTrainLabels, List<INDArray> normalizedValidationFeatures, List<INDArray> normalizedValidationLabels, int trainSize){
         List<Double> scores = new ArrayList<>();
         //Train the model
-        int minibatchSize = 100; // You can tweak this value
+        int minibatchSize = 32; // You can tweak this value
 
         List<Double> trainingErrors = new ArrayList<>();
         List<Double> validationErrors = new ArrayList<>();
@@ -194,8 +196,8 @@ public class Main {
                 List<INDArray> featuresMinibatch = new ArrayList<>();
                 List<INDArray> labelsMinibatch = new ArrayList<>();
                 for (int j = 0; j < minibatchSize && i + j < trainSize; j++) {
-                    featuresMinibatch.add(normalizedTrainFeatures.get(i + j).reshape(1, 5, lookback));
-                    labelsMinibatch.add(normalizedTrainLabels.get(i + j).reshape(1, 1, lookback));
+                    featuresMinibatch.add(normalizedTrainFeatures.get(i + j).reshape(1, 4, lookback));
+                    labelsMinibatch.add(normalizedTrainLabels.get(i + j).reshape(1, 1, lookback));  // No reshaping
                 }
                 model.fit(Nd4j.concat(0, featuresMinibatch.toArray(new INDArray[0])), Nd4j.concat(0, labelsMinibatch.toArray(new INDArray[0])));
                 trainingError += model.score();
@@ -203,13 +205,12 @@ public class Main {
             scores.add(model.score());
             trainingError /= (trainSize / minibatchSize);
             double validationError = 0;
-            RegressionEvaluation validationEval = new RegressionEvaluation(1);
+            Evaluation validationEval = new Evaluation(2);  // Changed to Evaluation
             for (int i = 0; i < normalizedValidationFeatures.size(); i++) {
-                INDArray predicted = model.output(normalizedValidationFeatures.get(i).reshape(1, 5, lookback)); // Updated to reflect the lookback period
-                validationEval.eval(normalizedValidationLabels.get(i).reshape(1, 1, lookback), predicted);
-                validationError += validationEval.meanSquaredError(0);
+                INDArray predicted = model.output(normalizedValidationFeatures.get(i).reshape(1, 4, lookback)); // Updated to reflect the lookback period
+                validationEval.eval(normalizedValidationLabels.get(i).reshape(1,1,lookback), predicted);  // No reshaping
             }
-            validationError /= normalizedValidationFeatures.size();
+            validationError = 1 - validationEval.accuracy();  // Calculate error as 1 - accuracy
             System.out.println("Epoch " + epoch + " / " + nEpochs + " : training error = " + trainingError + ", validation error = " + validationError);
 
             validationErrors.add(validationError);
@@ -289,28 +290,39 @@ public class Main {
         dataSplit.setTestSize(testSize);
         return dataSplit;
     }
-    public static Pair createFeaturesAndLabels(List<Candlestick> candlesticks) {
+    public static Pair createFeaturesAndLabels(ArrayList<Candlestick> candlesticks) {
         List<INDArray> featureList = new ArrayList<>();
         List<INDArray> labelList = new ArrayList<>();
+
+        MACD macd = MACD.calculateMACD(new ArrayList<>(candlesticks), 12, 26, 9, candlesticks.size());
+
+        double[] macdLines = macd.getMacdLine();
+        double[] signalLines = macd.getSignalLine();
+        double[] histograms = macd.getHistogram();
+
 
         //Create the features and labels
         for (int j = lookback; j < candlesticks.size() - stepsIntoFuture; j++) {
             // Features now have lookback * 5 size because for each lookback step we have 5 values (open, high, low, close, volume)
-            INDArray features = Nd4j.create(new double[lookback * 5]);
+            INDArray features = Nd4j.create(new double[lookback * 4]);
 
-            // We fill the features with the data from the lookback period
             for (int i = 0; i < lookback; i++) {
-                features.putScalar(i * 5, candlesticks.get(j - i).getOpen());
-                features.putScalar(i * 5 + 1, candlesticks.get(j - i).getHigh());
-                features.putScalar(i * 5 + 2, candlesticks.get(j - i).getLow());
-                features.putScalar(i * 5 + 3, candlesticks.get(j - i).getClose());
-                features.putScalar(i * 5 + 4, candlesticks.get(j - i).getVolume());
+                if (j + stepsIntoFuture < candlesticks.size()) {
+                    features.putScalar(i * 4 + 0, candlesticks.get(j - i).getClose());
+                    features.putScalar(i * 4 + 1, macdLines[j - i]);
+                    features.putScalar(i * 4 + 2, signalLines[j - i]);
+                    features.putScalar(i * 4 + 3, histograms[j - i]);
+                }
             }
 
-            // Labels now have lookback size because for each lookback step we have 1 value (close)
+            // Labels now have lookback size because for each lookback step we have 1 value (up or down)
             INDArray labels = Nd4j.create(new double[lookback]);
             for (int i = 0; i < lookback; i++) {
-                labels.putScalar(i, candlesticks.get(j + stepsIntoFuture - i).getClose());
+                if (j + stepsIntoFuture < candlesticks.size()) {
+                    double currentClosePrice = candlesticks.get(j - i).getClose();
+                    double futureClosePrice = candlesticks.get(j + stepsIntoFuture - i).getClose();
+                    labels.putScalar(i, futureClosePrice > currentClosePrice ? 1 : 0);
+                }
             }
 
             featureList.add(features);
@@ -323,14 +335,14 @@ public class Main {
 
         return pair;
     }
-    public static MultiLayerNetwork returnModel(){
+    public static MultiLayerNetwork returnModel() {
         //Create the model
         MultiLayerConfiguration conf = new NeuralNetConfiguration.Builder()
                 .seed(42)
                 .updater(new Adam())
                 .list()
                 .layer(0, new LSTM.Builder()
-                        .nIn(5)  // Adjusted to account for lookback
+                        .nIn(4)  // Adjusted to account for lookback
                         .nOut(300)
                         .activation(Activation.TANH)
                         .dropOut(dropout)
@@ -343,18 +355,12 @@ public class Main {
                         .build())
                 .layer(2, new LSTM.Builder()
                         .nIn(600)
-                        .nOut(600)
-                        .activation(Activation.TANH)
-                        .dropOut(dropout)
-                        .build())
-                .layer(3, new LSTM.Builder()
-                        .nIn(600)
                         .nOut(300)
                         .activation(Activation.TANH)
                         .dropOut(dropout)
                         .build())
-                .layer(4, new RnnOutputLayer.Builder(LossFunctions.LossFunction.MSE)
-                        .activation(Activation.IDENTITY)
+                .layer(3, new RnnOutputLayer.Builder(LossFunctions.LossFunction.XENT)
+                        .activation(Activation.SIGMOID)
                         .nIn(300)
                         .nOut(1)
                         .build())
