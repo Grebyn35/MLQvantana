@@ -29,13 +29,13 @@ import java.util.Arrays;
 import java.util.List;
 
 public class Main {
-    static int nEpochs = 120;
+    static int nEpochs = 50;
     static int stepsIntoFuture = 1;
     static double dropout = 0.00;
     static int lookback = 5;
 
     public static void main(String[] args) throws IOException {
-        ArrayList<Candlestick> candlesticks = returnCandlestickList("bybit", "ethusdt", "5m", "usdt-perpetual", 8000, "2021-00-01%2000:00:00");
+        ArrayList<Candlestick> candlesticks = returnCandlestickList("bybit", "ethusdt", "5m", "usdt-perpetual", 12000, "2021-00-01%2000:00:00");
         trainModel(candlesticks);
     }
     public static void trainModel(ArrayList<Candlestick> candlesticks){
