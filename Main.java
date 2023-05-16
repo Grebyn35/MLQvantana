@@ -29,10 +29,10 @@ import java.util.Arrays;
 import java.util.List;
 
 public class Main {
-    static int nEpochs = 20;
+    static int nEpochs = 30;
     static int stepsIntoFuture = 1;
     static double dropout = 0.00;
-    static int lookback = 5;
+    static int lookback = 4;
 
     public static void main(String[] args) throws IOException {
         ArrayList<Candlestick> candlesticks = returnCandlestickList("bybit", "ethusdt", "5m", "usdt-perpetual", 20000, "2021-00-01%2000:00:00");
