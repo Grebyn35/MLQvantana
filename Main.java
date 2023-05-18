@@ -32,7 +32,7 @@ public class Main {
     static int nEpochs = 50;
     static int stepsIntoFuture = 3;
     static double dropout = 0.00;
-    static int lookback = 7;
+    static int lookback = 6;
 
     public static void main(String[] args) throws IOException {
         ArrayList<Candlestick> candlesticks = returnCandlestickList("bybit", "ethusdt", "30m", "usdt-perpetual", 20000, "2021-00-01%2000:00:00");
