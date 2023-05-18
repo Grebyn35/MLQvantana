@@ -32,7 +32,7 @@ public class Main {
     static int nEpochs = 50;
     static int stepsIntoFuture = 3;
     static double dropout = 0.00;
-    static int lookback = 6;
+    static int lookback = 7;
 
     public static void main(String[] args) throws IOException {
         ArrayList<Candlestick> candlesticks = returnCandlestickList("bybit", "ethusdt", "30m", "usdt-perpetual", 20000, "2021-00-01%2000:00:00");
@@ -356,25 +356,25 @@ public class Main {
                 .list()
                 .layer(0, new LSTM.Builder()
                         .nIn(4)  // Adjusted to account for lookback
-                        .nOut(300)
+                        .nOut(350)
                         .activation(Activation.TANH)
                         .dropOut(dropout)
                         .build())
                 .layer(1, new LSTM.Builder()
-                        .nIn(300)
-                        .nOut(600)
+                        .nIn(350)
+                        .nOut(700)
                         .activation(Activation.TANH)
                         .dropOut(dropout)
                         .build())
                 .layer(2, new LSTM.Builder()
-                        .nIn(600)
-                        .nOut(300)
+                        .nIn(700)
+                        .nOut(350)
                         .activation(Activation.TANH)
                         .dropOut(dropout)
                         .build())
                 .layer(3, new RnnOutputLayer.Builder(LossFunctions.LossFunction.XENT)
                         .activation(Activation.SIGMOID)
-                        .nIn(300)
+                        .nIn(350)
                         .nOut(1)
                         .build())
                 .build();
