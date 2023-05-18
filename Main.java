@@ -30,12 +30,12 @@ import java.util.List;
 
 public class Main {
     static int nEpochs = 50;
-    static int stepsIntoFuture = 1;
+    static int stepsIntoFuture = 3;
     static double dropout = 0.00;
     static int lookback = 6;
 
     public static void main(String[] args) throws IOException {
-        ArrayList<Candlestick> candlesticks = returnCandlestickList("bybit", "ethusdt", "5m", "usdt-perpetual", 40000, "2021-00-01%2000:00:00");
+        ArrayList<Candlestick> candlesticks = returnCandlestickList("bybit", "ethusdt", "30m", "usdt-perpetual", 20000, "2021-00-01%2000:00:00");
         trainModel(candlesticks);
     }
     public static void trainModel(ArrayList<Candlestick> candlesticks){
@@ -170,7 +170,7 @@ public class Main {
         Evaluation eval = new Evaluation(2);
         //Evaluate the model
         for (int i = 0; i < normalizedTestFeatures.size(); i++) {
-            INDArray predicted = model.output(normalizedTestFeatures.get(i).reshape(1, 5, lookback));
+            INDArray predicted = model.output(normalizedTestFeatures.get(i).reshape(1, 4, lookback));
             eval.eval(normalizedTestLabels.get(i).reshape(1, 1, lookback), predicted);
 
             // Add data to plot
@@ -205,7 +205,7 @@ public class Main {
                 List<INDArray> featuresMinibatch = new ArrayList<>();
                 List<INDArray> labelsMinibatch = new ArrayList<>();
                 for (int j = 0; j < minibatchSize && i + j < trainSize; j++) {
-                    featuresMinibatch.add(normalizedTrainFeatures.get(i + j).reshape(1, 5, lookback));
+                    featuresMinibatch.add(normalizedTrainFeatures.get(i + j).reshape(1, 4, lookback));
                     labelsMinibatch.add(normalizedTrainLabels.get(i + j).reshape(1, 1, lookback));  // No reshaping
                 }
                 model.fit(Nd4j.concat(0, featuresMinibatch.toArray(new INDArray[0])), Nd4j.concat(0, labelsMinibatch.toArray(new INDArray[0])));
@@ -216,7 +216,7 @@ public class Main {
             double validationError = 0;
             Evaluation validationEval = new Evaluation(2);  // Changed to Evaluation
             for (int i = 0; i < normalizedValidationFeatures.size(); i++) {
-                INDArray predicted = model.output(normalizedValidationFeatures.get(i).reshape(1, 5, lookback)); // Updated to reflect the lookback period
+                INDArray predicted = model.output(normalizedValidationFeatures.get(i).reshape(1, 4, lookback)); // Updated to reflect the lookback period
                 validationEval.eval(normalizedValidationLabels.get(i).reshape(1,1,lookback), predicted);  // No reshaping
             }
             validationError = 1 - validationEval.accuracy();  // Calculate error as 1 - accuracy
@@ -304,7 +304,7 @@ public class Main {
         List<INDArray> labelList = new ArrayList<>();
 
         MACD macd = MACD.calculateMACD(new ArrayList<>(candlesticks), 12, 26, 9, candlesticks.size());
-        Ema ema = Ema.calcEMA(candlesticks, 9);
+        Ema ema = Ema.calcEMA(candlesticks, 50);
 
         ArrayList<Double> emaValues = ema.getValues();
 
@@ -317,15 +317,14 @@ public class Main {
         //Create the features and labels
         for (int j = lookback; j < candlesticks.size() - stepsIntoFuture; j++) {
             // Features now have lookback * 5 size because for each lookback step we have 5 values (open, high, low, close, volume)
-            INDArray features = Nd4j.create(new double[lookback * 5]);
+            INDArray features = Nd4j.create(new double[lookback * 4]);
 
             for (int i = 0; i < lookback; i++) {
                 if (j + stepsIntoFuture < candlesticks.size()) {
-                    features.putScalar(i * 5 + 0, candlesticks.get(j - i).getClose());
-                    features.putScalar(i * 5 + 1, macdLines[j - i]);
-                    features.putScalar(i * 5 + 2, signalLines[j - i]);
-                    features.putScalar(i * 5 + 3, histograms[j - i]);
-                    features.putScalar(i * 5 + 4, emaValues.get(j - i));
+                    features.putScalar(i * 4 + 0, candlesticks.get(j - i).getClose());
+                    features.putScalar(i * 4 + 1, macdLines[j - i]);
+                    features.putScalar(i * 4 + 2, signalLines[j - i]);
+                    features.putScalar(i * 4 + 3, histograms[j - i]);
                 }
             }
 
@@ -356,7 +355,7 @@ public class Main {
                 .updater(new Adam())
                 .list()
                 .layer(0, new LSTM.Builder()
-                        .nIn(5)  // Adjusted to account for lookback
+                        .nIn(4)  // Adjusted to account for lookback
                         .nOut(300)
                         .activation(Activation.TANH)
                         .dropOut(dropout)
