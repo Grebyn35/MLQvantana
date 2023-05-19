@@ -35,7 +35,7 @@ public class Main {
     static int lookback = 6;
 
     public static void main(String[] args) throws IOException {
-        ArrayList<Candlestick> candlesticks = returnCandlestickList("bybit", "ethusdt", "1h", "usdt-perpetual", 40000, "2020-01-01%2000:00:00");
+        ArrayList<Candlestick> candlesticks = returnCandlestickList("bybit", "ethusdt", "30m", "usdt-perpetual", 40000, "2020-01-01%2000:00:00");
         trainModel(candlesticks);
     }
     public static void trainModel(ArrayList<Candlestick> candlesticks){
@@ -309,7 +309,7 @@ public class Main {
         double[] signalLines = macd.getSignalLine();
         double[] histograms = macd.getHistogram();
         System.out.println("loaded a dataset size of " + candlesticks.size());
-
+        double feeRate = 0.0006;  // 0.06% transaction fee rate
 
         //Create the features and labels
         for (int j = lookback; j < candlesticks.size() - stepsIntoFuture; j++) {
@@ -320,7 +320,9 @@ public class Main {
 
                     double currentClosePrice = candlesticks.get(j - i).getClose();
                     double previousClosePrice = (j - i - 1 >= 0) ? candlesticks.get(j - i - 1).getClose() : 0;
-                    double closePriceDifference = currentClosePrice - previousClosePrice;
+
+                    double fees = previousClosePrice * feeRate;
+                    double closePriceDifference = currentClosePrice - previousClosePrice - 2 * fees; // Considering fees at buying and selling
 
                     features.putScalar(i * 4 + 0, closePriceDifference);
                     features.putScalar(i * 4 + 1, macdLines[j - i]);
@@ -335,11 +337,17 @@ public class Main {
                 if (j + stepsIntoFuture < candlesticks.size()) {
                     double currentClosePrice = candlesticks.get(j - i).getClose();
                     double previousClosePrice = (j - i - 1 >= 0) ? candlesticks.get(j - i - 1).getClose() : 0;
-                    double currentClosePriceDiff = currentClosePrice - previousClosePrice;
+
+                    // Adjusting previous close price by subtracting the transaction fee
+                    double adjustedPreviousClosePrice = previousClosePrice - (previousClosePrice * feeRate);
+                    double currentClosePriceDiff = currentClosePrice - adjustedPreviousClosePrice;
 
                     double futureClosePrice = candlesticks.get(j + stepsIntoFuture - i).getClose();
                     double previousFutureClosePrice = (j + stepsIntoFuture - i - 1 >= 0) ? candlesticks.get(j + stepsIntoFuture - i - 1).getClose() : 0;
-                    double futureClosePriceDiff = futureClosePrice - previousFutureClosePrice;
+
+                    // Adjusting future close price by subtracting the transaction fee
+                    double adjustedFutureClosePrice = futureClosePrice - (futureClosePrice * feeRate);
+                    double futureClosePriceDiff = adjustedFutureClosePrice - previousFutureClosePrice;
 
                     labels.putScalar(i, futureClosePriceDiff > currentClosePriceDiff ? 1 : 0);
                 }
