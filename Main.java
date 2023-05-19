@@ -35,7 +35,7 @@ public class Main {
     static int lookback = 6;
 
     public static void main(String[] args) throws IOException {
-        ArrayList<Candlestick> candlesticks = returnCandlestickList("bybit", "ethusdt", "5m", "usdt-perpetual", 40000, "2021-00-01%2000:00:00");
+        ArrayList<Candlestick> candlesticks = returnCandlestickList("bybit", "ethusdt", "1h", "usdt-perpetual", 40000, "2020-01-01%2000:00:00");
         trainModel(candlesticks);
     }
     public static void trainModel(ArrayList<Candlestick> candlesticks){
@@ -317,7 +317,12 @@ public class Main {
             INDArray features = Nd4j.create(new double[lookback * 4]);
             for (int i = 0; i < lookback; i++) {
                 if (j + stepsIntoFuture < candlesticks.size()) {
-                    features.putScalar(i * 4 + 0, candlesticks.get(j - i).getClose());
+
+                    double currentClosePrice = candlesticks.get(j - i).getClose();
+                    double previousClosePrice = (j - i - 1 >= 0) ? candlesticks.get(j - i - 1).getClose() : 0;
+                    double closePriceDifference = currentClosePrice - previousClosePrice;
+
+                    features.putScalar(i * 4 + 0, closePriceDifference);
                     features.putScalar(i * 4 + 1, macdLines[j - i]);
                     features.putScalar(i * 4 + 2, signalLines[j - i]);
                     features.putScalar(i * 4 + 3, histograms[j - i]);
@@ -329,8 +334,14 @@ public class Main {
             for (int i = 0; i < lookback; i++) {
                 if (j + stepsIntoFuture < candlesticks.size()) {
                     double currentClosePrice = candlesticks.get(j - i).getClose();
+                    double previousClosePrice = (j - i - 1 >= 0) ? candlesticks.get(j - i - 1).getClose() : 0;
+                    double currentClosePriceDiff = currentClosePrice - previousClosePrice;
+
                     double futureClosePrice = candlesticks.get(j + stepsIntoFuture - i).getClose();
-                    labels.putScalar(i, futureClosePrice > currentClosePrice ? 1 : 0);
+                    double previousFutureClosePrice = (j + stepsIntoFuture - i - 1 >= 0) ? candlesticks.get(j + stepsIntoFuture - i - 1).getClose() : 0;
+                    double futureClosePriceDiff = futureClosePrice - previousFutureClosePrice;
+
+                    labels.putScalar(i, futureClosePriceDiff > currentClosePriceDiff ? 1 : 0);
                 }
             }
 
