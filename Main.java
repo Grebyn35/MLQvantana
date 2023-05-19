@@ -30,7 +30,7 @@ import java.util.List;
 
 public class Main {
     static int nEpochs = 50;
-    static int stepsIntoFuture = 3;
+    static int stepsIntoFuture = 4;
     static double dropout = 0.00;
     static int lookback = 6;
 
