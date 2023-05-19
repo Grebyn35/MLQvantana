@@ -35,7 +35,7 @@ public class Main {
     static int lookback = 6;
 
     public static void main(String[] args) throws IOException {
-        ArrayList<Candlestick> candlesticks = returnCandlestickList("bybit", "ethusdt", "30m", "usdt-perpetual", 20000, "2021-00-01%2000:00:00");
+        ArrayList<Candlestick> candlesticks = returnCandlestickList("bybit", "ethusdt", "5m", "usdt-perpetual", 40000, "2021-00-01%2000:00:00");
         trainModel(candlesticks);
     }
     public static void trainModel(ArrayList<Candlestick> candlesticks){
@@ -304,21 +304,17 @@ public class Main {
         List<INDArray> labelList = new ArrayList<>();
 
         MACD macd = MACD.calculateMACD(new ArrayList<>(candlesticks), 12, 26, 9, candlesticks.size());
-        Ema ema = Ema.calcEMA(candlesticks, 50);
-
-        ArrayList<Double> emaValues = ema.getValues();
 
         double[] macdLines = macd.getMacdLine();
         double[] signalLines = macd.getSignalLine();
         double[] histograms = macd.getHistogram();
-
+        System.out.println("loaded a dataset size of " + candlesticks.size());
 
 
         //Create the features and labels
         for (int j = lookback; j < candlesticks.size() - stepsIntoFuture; j++) {
             // Features now have lookback * 5 size because for each lookback step we have 5 values (open, high, low, close, volume)
             INDArray features = Nd4j.create(new double[lookback * 4]);
-
             for (int i = 0; i < lookback; i++) {
                 if (j + stepsIntoFuture < candlesticks.size()) {
                     features.putScalar(i * 4 + 0, candlesticks.get(j - i).getClose());
