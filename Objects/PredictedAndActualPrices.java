@@ -10,4 +10,5 @@ public class PredictedAndActualPrices {
 
     private List<Double> actualPrices;
     private List<Double> predictedPrices;
+    private List<Double> portfolio;
 }

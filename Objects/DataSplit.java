@@ -11,6 +11,8 @@ public class DataSplit {
      private List<INDArray> trainFeatures;
      private List<INDArray> trainLabels;
 
+     private List<Candlestick> candlesticks;
+
 
      private List<INDArray> testFeatures;
      private List<INDArray> testLabels;
