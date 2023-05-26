@@ -9,5 +9,6 @@ import java.util.List;
 @Data
 public class Pair {
     private List<INDArray> featureList;
+    private List<Candlestick> candlesticks;
     private List<INDArray> labelList;
 }

@@ -4,8 +4,7 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonParser;
 import org.deeplearning4j.nn.conf.MultiLayerConfiguration;
 import org.deeplearning4j.nn.conf.NeuralNetConfiguration;
-import org.deeplearning4j.nn.conf.layers.LSTM;
-import org.deeplearning4j.nn.conf.layers.RnnOutputLayer;
+import org.deeplearning4j.nn.conf.layers.*;
 import org.deeplearning4j.nn.multilayer.MultiLayerNetwork;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
@@ -21,6 +20,7 @@ import org.nd4j.linalg.learning.config.Adam;
 import org.nd4j.linalg.lossfunctions.LossFunctions;
 import org.deeplearning4j.optimize.listeners.ScoreIterationListener;
 import org.nd4j.linalg.ops.transforms.Transforms;
+import org.opencv.ml.EM;
 
 
 import java.io.IOException;
@@ -29,81 +29,111 @@ import java.util.Arrays;
 import java.util.List;
 
 public class Main {
-    static int nEpochs = 50;
-    static int stepsIntoFuture = 4;
+    static int nEpochs = 25;
     static double dropout = 0.00;
-    static int lookback = 6;
+
+    static int params = 5;
 
     public static void main(String[] args) throws IOException {
-        ArrayList<Candlestick> candlesticks = returnCandlestickList("bybit", "ethusdt", "1h", "usdt-perpetual", 40000, "2021-00-01%2000:00:00");
-        trainModel(candlesticks);
+        //Initialize the hyperparameter tuning values
+        ArrayList<Integer> lookbackList = new ArrayList<>();
+        ArrayList<Integer> stepsIntoFutureList = new ArrayList<>();
+
+        //Add lookback parameters for training
+        //Default is 6
+        //lookbackList.add(12);
+        //lookbackList.add(14);
+        //lookbackList.add(16);
+        lookbackList.add(18);
+        //lookbackList.add(20);
+
+        //Add stepsIntoFuture parameters for training
+        //Default is 3
+        //stepsIntoFutureList.add(1);
+        //stepsIntoFutureList.add(2);
+        //stepsIntoFutureList.add(3);
+        //stepsIntoFutureList.add(4);
+        stepsIntoFutureList.add(5);
+        //stepsIntoFutureList.add(6);
+
+        ArrayList<Candlestick> candlesticks = returnCandlestickList("bybit", "ethusdt", "30m", "usdt-perpetual", 40000, "2020-01-01%2000:00:00");
+        trainModel(candlesticks, lookbackList, stepsIntoFutureList);
     }
-    public static void trainModel(ArrayList<Candlestick> candlesticks){
+    public static void trainModel(ArrayList<Candlestick> candlesticks, ArrayList<Integer> lookbackList, ArrayList<Integer> stepsIntoFutureList){
 
-        // Step 1: Create the features and labels
-        Pair pair = createFeaturesAndLabels(candlesticks);
-        List<INDArray> featureList = pair.getFeatureList();
-        List<INDArray> labelList = pair.getLabelList();
+        for(int i = 0; i<lookbackList.size();i++){
+            for(int j = 0; j<stepsIntoFutureList.size();j++){
+                System.out.println(i + "/" + lookbackList.size() + ", " + j + "/" + stepsIntoFutureList.size());
+                // Step 1: Create the features and labels
+                Pair pair = createFeaturesAndLabels(candlesticks, lookbackList.get(i), stepsIntoFutureList.get(j));
+                List<INDArray> featureList = pair.getFeatureList();
+                List<INDArray> labelList = pair.getLabelList();
+                List<Candlestick> candlestickList = pair.getCandlesticks();
 
-        // Step 2: Split the data into train, test and validation sets
-        DataSplit dataSplit = splitData(featureList, labelList);
-        List<INDArray> trainFeatures = dataSplit.getTrainFeatures();
-        List<INDArray> trainLabels = dataSplit.getTrainLabels();
+                // Step 2: Split the data into train, test and validation sets
+                DataSplit dataSplit = splitData(featureList, labelList, candlestickList);
+                List<INDArray> trainFeatures = dataSplit.getTrainFeatures();
+                List<INDArray> trainLabels = dataSplit.getTrainLabels();
 
-        List<INDArray> testFeatures = dataSplit.getTestFeatures();
-        List<INDArray> testLabels = dataSplit.getTestLabels();
+                List<INDArray> testFeatures = dataSplit.getTestFeatures();
+                List<INDArray> testLabels = dataSplit.getTestLabels();
 
-        List<INDArray> validationFeatures = dataSplit.getValidationFeatures();
-        List<INDArray> validationLabels = dataSplit.getValidationLabels();
+                List<INDArray> validationFeatures = dataSplit.getValidationFeatures();
+                List<INDArray> validationLabels = dataSplit.getValidationLabels();
 
-        // Step 3: Normalize data
-        DataNormalization dataNormalization = normalizeData(trainFeatures, trainLabels, testFeatures, testLabels, validationFeatures, validationLabels);
-        List<INDArray> normalizedTrainFeatures = dataNormalization.getNormalizedTrainFeatures();
-        List<INDArray> normalizedTrainLabels = dataNormalization.getNormalizedTrainLabels();
+                // Step 3: Normalize data
+                DataNormalization dataNormalization = normalizeData(trainFeatures, trainLabels, testFeatures, testLabels, validationFeatures, validationLabels);
+                List<INDArray> normalizedTrainFeatures = dataNormalization.getNormalizedTrainFeatures();
+                List<INDArray> normalizedTrainLabels = dataNormalization.getNormalizedTrainLabels();
 
-        List<INDArray> normalizedTestFeatures = dataNormalization.getNormalizedTestFeatures();
-        List<INDArray> normalizedTestLabels = dataNormalization.getNormalizedTestLabels();
+                List<INDArray> normalizedTestFeatures = dataNormalization.getNormalizedTestFeatures();
+                List<INDArray> normalizedTestLabels = dataNormalization.getNormalizedTestLabels();
 
-        List<INDArray> normalizedValidationFeatures = dataNormalization.getNormalizedValidationFeatures();
-        List<INDArray> normalizedValidationLabels = dataNormalization.getNormalizedValidationLabels();
+                List<INDArray> normalizedValidationFeatures = dataNormalization.getNormalizedValidationFeatures();
+                List<INDArray> normalizedValidationLabels = dataNormalization.getNormalizedValidationLabels();
 
-        // Step 4: Initialize the learning model being used
-        MultiLayerNetwork model = returnModel();
-        model.init();
 
-        // Step 5: Train the model and evaluate
-        ModelTrainingAndEvaluation modelTrainingAndEvaluation = trainAndEvaluateModel(model, normalizedTrainFeatures, normalizedTrainLabels, normalizedValidationFeatures, normalizedValidationLabels, dataSplit.getTrainSize());
-        List<Double> scores = modelTrainingAndEvaluation.getScores();
-        List<Double> trainingErrors = modelTrainingAndEvaluation.getTrainingErrors();
-        List<Double> validationErrors = modelTrainingAndEvaluation.getValidationErrors();
+                // Step 4: Initialize the learning model being used
+                MultiLayerNetwork model = returnModel();
+                model.init();
 
-        //Save model to file
+                // Step 5: Train the model and evaluate
+                ModelTrainingAndEvaluation modelTrainingAndEvaluation = trainAndEvaluateModel(model, normalizedTrainFeatures, normalizedTrainLabels, normalizedValidationFeatures, normalizedValidationLabels, dataSplit.getTrainSize(), lookbackList.get(i));
+                List<Double> scores = modelTrainingAndEvaluation.getScores();
+                List<Double> trainingErrors = modelTrainingAndEvaluation.getTrainingErrors();
+                List<Double> validationErrors = modelTrainingAndEvaluation.getValidationErrors();
 
-        // Step 6: Predict the test data and rescale
-        PredictedAndActualPrices predictedAndActualPrices = predictAndRescalePrices(model, normalizedTestFeatures, normalizedTestLabels, testLabels);
-        List<Double> actualPrices = predictedAndActualPrices.getActualPrices();
-        List<Double> predictedPrices = predictedAndActualPrices.getPredictedPrices();
+                //Save model to file
 
-        // Step 7: Show the results
-        showResults(actualPrices, predictedPrices, scores, trainingErrors, validationErrors);
+                // Step 6: Predict the test data and rescale
+                PredictedAndActualPrices predictedAndActualPrices = predictAndRescalePrices(model, normalizedTestFeatures, normalizedTestLabels, testLabels, testFeatures, lookbackList.get(i), stepsIntoFutureList.get(j), dataSplit.getCandlesticks());
+                List<Double> actualPrices = predictedAndActualPrices.getActualPrices();
+                List<Double> predictedPrices = predictedAndActualPrices.getPredictedPrices();
+                List<Double> portfolio = predictedAndActualPrices.getPortfolio();
+
+                // Step 7: Show the results
+                showResults(actualPrices, predictedPrices, scores, trainingErrors, validationErrors, portfolio);
+            }
+        }
     }
-    public static void showResults(List<Double> actualPrices, List<Double> predictedPrices, List<Double> scores, List<Double> trainingErrors, List<Double> validationErrors){
+    public static void showResults(List<Double> actualPrices, List<Double> predictedPrices, List<Double> scores, List<Double> trainingErrors, List<Double> validationErrors, List<Double> portfolio){
         plotPredictions(actualPrices, predictedPrices);
-        plotScore(scores);
+        plotPortfolio(portfolio);
+        //plotScore(scores);
         plotTrainingErrors(trainingErrors);
         plotValidationErrors(validationErrors);
-        System.out.println("Actual price: " + actualPrices);
-        System.out.println("Predicted price: " + predictedPrices);
-        System.out.println("Learning curve: " + scores);
-        System.out.println("Training mean squared errors: " + trainingErrors);
-        System.out.println("Validation mean squared errors: " + validationErrors);
+        /*System.out.println("Actual Price: " + actualPrices);
+        System.out.println("Predicted Price: " + predictedPrices);
+        System.out.println("Learning Curve: " + scores);
+        System.out.println("Training Mean Squared Errors: " + trainingErrors);
+        System.out.println("Validation Mean Squared Errors: " + validationErrors);*/
     }
     private static void plotTrainingErrors(List<Double> trainingErrors) {
         // Create Chart
         XYChart chart = new XYChartBuilder()
                 .width(800)
                 .height(600)
-                .title("Learning Curve")
+                .title("Training errors")
                 .xAxisTitle("Epoch")
                 .yAxisTitle("Score")
                 .build();
@@ -120,7 +150,7 @@ public class Main {
         XYChart chart = new XYChartBuilder()
                 .width(800)
                 .height(600)
-                .title("Learning Curve")
+                .title("Validation errors")
                 .xAxisTitle("Epoch")
                 .yAxisTitle("Score")
                 .build();
@@ -147,6 +177,22 @@ public class Main {
         // Show the chart
         new SwingWrapper<>(chart).displayChart();
     }
+    private static void plotPortfolio(List<Double> portfolio) {
+        // Create Chart
+        XYChart chart = new XYChartBuilder()
+                .width(800)
+                .height(600)
+                .title("Portfolio")
+                .xAxisTitle("Timeseries")
+                .yAxisTitle("Value")
+                .build();
+
+        // Add data to the chart
+        chart.addSeries("Portfolio", portfolio);
+
+        // Show the chart
+        new SwingWrapper<>(chart).displayChart();
+    }
     private static void plotPredictions(List<Double> actual, List<Double> predicted) {
         // Create Chart
         XYChart chart = new XYChartBuilder()
@@ -164,34 +210,85 @@ public class Main {
         // Show the chart
         new SwingWrapper<>(chart).displayChart();
     }
-    public static PredictedAndActualPrices predictAndRescalePrices(MultiLayerNetwork model, List<INDArray> normalizedTestFeatures, List<INDArray> normalizedTestLabels, List<INDArray> testLabels){
+    public static PredictedAndActualPrices predictAndRescalePrices(MultiLayerNetwork model, List<INDArray> normalizedTestFeatures, List<INDArray> normalizedTestLabels, List<INDArray> testLabels, List<INDArray> testFeatures, int lookback, int stepsIntoFuture, List<Candlestick> candlestickList){
         List<Double> predictedPrices = new ArrayList<>();
         List<Double> actualPrices = new ArrayList<>();
+        List<Double> portfolioList = new ArrayList<>();
         Evaluation eval = new Evaluation(2);
+        double wins = 0;
+        double losses = 0;
+        double portfolio = 2000;
         //Evaluate the model
         for (int i = 0; i < normalizedTestFeatures.size(); i++) {
             INDArray predicted = model.output(normalizedTestFeatures.get(i).reshape(1, 4, lookback));
             eval.eval(normalizedTestLabels.get(i).reshape(1, 1, lookback), predicted);
+            //To simulate trading
+            if(i<normalizedTestFeatures.size()-stepsIntoFuture){
+                System.out.println("(current close: " + candlestickList.get(i).getClose() + " | future close: "  + candlestickList.get(i+stepsIntoFuture).getClose() + "). label: " + testLabels.get(i).getDouble(0) + ". predicted: " + predicted.getDouble(0));
+                //double fees = (candlestickList.get(i+stepsIntoFuture).getClose() * 0.0006) + (candlestickList.get(i).getClose() * 0.0006);
+                double fees = 0;
+                if(predicted.getDouble(0) > 0.5){
+                    /*if(testLabels.get(i).getDouble(0) == 1){
+                        wins++;
+                    }
+                    else{
+                        losses++;
+                    }*/
+                    if(candlestickList.get(i+stepsIntoFuture).getClose() > candlestickList.get(i).getClose()){
+                        wins++;
+                    }
+                    else{
+                        losses++;
+                    }
+                    double profitAfterFees = (candlestickList.get(i+stepsIntoFuture).getClose() - candlestickList.get(i).getClose()) - fees;
+                    portfolio+=profitAfterFees;
+                    System.out.println("predicted: " + predicted.getDouble(0) + ". Profit after fees: " + profitAfterFees);
+                }
+                else if(predicted.getDouble(0) < 0.5){
+                    /*if(testLabels.get(i).getDouble(0) == 0){
+                        wins++;
+                    }
+                    else{
+                        losses++;
+                    }*/
+                    if(candlestickList.get(i).getClose() > candlestickList.get(i+stepsIntoFuture).getClose()){
+                        wins++;
+                    }
+                    else{
+                        losses++;
+                    }
+                    double profitAfterFees = (candlestickList.get(i).getClose() - candlestickList.get(i+stepsIntoFuture).getClose()) - fees;
+                    portfolio+=profitAfterFees;
+                    System.out.println("predicted: " + predicted.getDouble(0) + ". Profit after fees: " + profitAfterFees);
+                }
+                //Add portfolio value to a list to later see growth
+                portfolioList.add(portfolio);
+            }
 
             // Add data to plot
             predictedPrices.add(predicted.getDouble(0));
             actualPrices.add(testLabels.get(i).getDouble(0));
         }
+        System.out.println("wins: " + wins);
+        System.out.println("losses: " + losses);
         PredictedAndActualPrices predictedAndActualPrices = new PredictedAndActualPrices();
         predictedAndActualPrices.setPredictedPrices(predictedPrices);
+        predictedAndActualPrices.setPortfolio(portfolioList);
         predictedAndActualPrices.setActualPrices(actualPrices);
         double accuracy = eval.accuracy();
         double precision = eval.precision();
         double recall = eval.recall();
         double f1 = eval.f1();
 
+        System.out.println("Lookback Hyperparameter: " + lookback);
+        System.out.println("StepsIntoFuture Hyperparameter: " + stepsIntoFuture);
         System.out.println("Accuracy: " + accuracy);
         System.out.println("Precision: " + precision);
         System.out.println("Recall: " + recall);
         System.out.println("F1 Score: " + f1);
         return predictedAndActualPrices;
     }
-    public static ModelTrainingAndEvaluation trainAndEvaluateModel(MultiLayerNetwork model, List<INDArray> normalizedTrainFeatures, List<INDArray> normalizedTrainLabels, List<INDArray> normalizedValidationFeatures, List<INDArray> normalizedValidationLabels, int trainSize){
+    public static ModelTrainingAndEvaluation trainAndEvaluateModel(MultiLayerNetwork model, List<INDArray> normalizedTrainFeatures, List<INDArray> normalizedTrainLabels, List<INDArray> normalizedValidationFeatures, List<INDArray> normalizedValidationLabels, int trainSize, int lookback){
         List<Double> scores = new ArrayList<>();
         //Train the model
         int minibatchSize = 32; // You can tweak this value
@@ -270,16 +367,18 @@ public class Main {
         dataNormalization.setTrainLabelMax(trainLabelMax);
         return dataNormalization;
     }
-    public static DataSplit splitData(List<INDArray> featureList, List<INDArray> labelList){
+    public static DataSplit splitData(List<INDArray> featureList, List<INDArray> labelList, List<Candlestick> candlesticks){
         int trainSize = (int) (0.7 * featureList.size());
         int testSize = (int) (0.15 * featureList.size());
+        int candlestickSize = (int) (0.15 * candlesticks.size());
 
         List<INDArray> trainFeatures = featureList.subList(0, trainSize);
         List<INDArray> trainLabels = labelList.subList(0, trainSize);
 
+        List<Candlestick> testCandlesticks = candlesticks.subList(trainSize, trainSize + candlestickSize);
+
         List<INDArray> testFeatures = featureList.subList(trainSize, trainSize + testSize);
         List<INDArray> testLabels = labelList.subList(trainSize, trainSize + testSize);
-
 
         List<INDArray> validationFeatures = featureList.subList(trainSize + testSize, featureList.size());
         List<INDArray> validationLabels = labelList.subList(trainSize + testSize, labelList.size());
@@ -288,6 +387,8 @@ public class Main {
 
         dataSplit.setTrainFeatures(trainFeatures);
         dataSplit.setTrainLabels(trainLabels);
+
+        dataSplit.setCandlesticks(testCandlesticks);
 
         dataSplit.setTestFeatures(testFeatures);
         dataSplit.setTestLabels(testLabels);
@@ -299,9 +400,10 @@ public class Main {
         dataSplit.setTestSize(testSize);
         return dataSplit;
     }
-    public static Pair createFeaturesAndLabels(ArrayList<Candlestick> candlesticks) {
+    public static Pair createFeaturesAndLabels(ArrayList<Candlestick> candlesticks, int lookback, int stepsIntoFuture) {
         List<INDArray> featureList = new ArrayList<>();
         List<INDArray> labelList = new ArrayList<>();
+        List<Candlestick> candlestickList = new ArrayList<>();
 
         MACD macd = MACD.calculateMACD(new ArrayList<>(candlesticks), 12, 26, 9, candlesticks.size());
 
@@ -310,17 +412,22 @@ public class Main {
         double[] histograms = macd.getHistogram();
         System.out.println("loaded a dataset size of " + candlesticks.size());
 
-
         //Create the features and labels
         for (int j = lookback; j < candlesticks.size() - stepsIntoFuture; j++) {
             // Features now have lookback * 5 size because for each lookback step we have 5 values (open, high, low, close, volume)
             INDArray features = Nd4j.create(new double[lookback * 4]);
             for (int i = 0; i < lookback; i++) {
                 if (j + stepsIntoFuture < candlesticks.size()) {
-                    features.putScalar(i * 4 + 0, candlesticks.get(j - i).getClose());
+                    double currentClosePrice = candlesticks.get(j - i).getClose();
+                    double previousClosePrice = (j - i - 1 >= 0) ? candlesticks.get(j - i - 1).getClose() : 0;
+
+                    double closePriceDifference = currentClosePrice - previousClosePrice; // Considering fees at buying and selling
+
+                    features.putScalar(i * 4 + 0, closePriceDifference);
                     features.putScalar(i * 4 + 1, macdLines[j - i]);
                     features.putScalar(i * 4 + 2, signalLines[j - i]);
                     features.putScalar(i * 4 + 3, histograms[j - i]);
+
                 }
             }
 
@@ -328,22 +435,25 @@ public class Main {
             INDArray labels = Nd4j.create(new double[lookback]);
             for (int i = 0; i < lookback; i++) {
                 if (j + stepsIntoFuture < candlesticks.size()) {
+
                     double currentClosePrice = candlesticks.get(j - i).getClose();
                     double futureClosePrice = candlesticks.get(j + stepsIntoFuture - i).getClose();
+
                     labels.putScalar(i, futureClosePrice > currentClosePrice ? 1 : 0);
                 }
             }
-
+            candlestickList.add(candlesticks.get(j));
             featureList.add(features);
             labelList.add(labels);
         }
-
         Pair pair = new Pair();
+        pair.setCandlesticks(candlestickList);
         pair.setFeatureList(featureList);
         pair.setLabelList(labelList);
 
         return pair;
     }
+
     public static MultiLayerNetwork returnModel() {
         //Create the model
         MultiLayerConfiguration conf = new NeuralNetConfiguration.Builder()
