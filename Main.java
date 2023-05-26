@@ -35,7 +35,7 @@ public class Main {
     static int lookback = 6;
 
     public static void main(String[] args) throws IOException {
-        ArrayList<Candlestick> candlesticks = returnCandlestickList("bybit", "ethusdt", "5m", "usdt-perpetual", 40000, "2021-00-01%2000:00:00");
+        ArrayList<Candlestick> candlesticks = returnCandlestickList("bybit", "ethusdt", "1h", "usdt-perpetual", 40000, "2021-00-01%2000:00:00");
         trainModel(candlesticks);
     }
     public static void trainModel(ArrayList<Candlestick> candlesticks){
