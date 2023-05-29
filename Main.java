@@ -269,8 +269,8 @@ public class Main {
                 }
                 //Add portfolio value to a list to later see growth
                 portfolioList.add(portfolio);
+                priceIntoFutureList.add(candlestickList.get(i+stepsIntoFuture).getClose());
             }
-            priceIntoFutureList.add(candlestickList.get(i+stepsIntoFuture).getClose());
             // Add data to plot
             predictedPrices.add(predicted.getDouble(0));
             actualPrices.add(testLabels.get(i).getDouble(0));
