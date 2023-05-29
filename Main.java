@@ -31,8 +31,8 @@ import java.util.List;
 public class Main {
     static int nEpochs = 25;
     static double dropout = 0.00;
-
-    static int params = 5;
+    static int params = 8;
+    static double portfolio = 2000;
 
     public static void main(String[] args) throws IOException {
         //Initialize the hyperparameter tuning values
@@ -41,19 +41,19 @@ public class Main {
 
         //Add lookback parameters for training
         //Default is 6
-        //lookbackList.add(12);
+        lookbackList.add(30);
         //lookbackList.add(14);
         //lookbackList.add(16);
-        lookbackList.add(18);
+        //lookbackList.add(18);
         //lookbackList.add(20);
 
         //Add stepsIntoFuture parameters for training
         //Default is 3
         //stepsIntoFutureList.add(1);
         //stepsIntoFutureList.add(2);
-        //stepsIntoFutureList.add(3);
+        stepsIntoFutureList.add(4);
         //stepsIntoFutureList.add(4);
-        stepsIntoFutureList.add(5);
+        //stepsIntoFutureList.add(5);
         //stepsIntoFutureList.add(6);
 
         ArrayList<Candlestick> candlesticks = returnCandlestickList("bybit", "ethusdt", "30m", "usdt-perpetual", 40000, "2020-01-01%2000:00:00");
@@ -110,15 +110,17 @@ public class Main {
                 List<Double> actualPrices = predictedAndActualPrices.getActualPrices();
                 List<Double> predictedPrices = predictedAndActualPrices.getPredictedPrices();
                 List<Double> portfolio = predictedAndActualPrices.getPortfolio();
+                List<Double> priceIntoFuture = predictedAndActualPrices.getPriceIntoFuture();
 
                 // Step 7: Show the results
-                showResults(actualPrices, predictedPrices, scores, trainingErrors, validationErrors, portfolio);
+                showResults(actualPrices, predictedPrices, scores, trainingErrors, validationErrors, portfolio, priceIntoFuture);
             }
         }
     }
-    public static void showResults(List<Double> actualPrices, List<Double> predictedPrices, List<Double> scores, List<Double> trainingErrors, List<Double> validationErrors, List<Double> portfolio){
+    public static void showResults(List<Double> actualPrices, List<Double> predictedPrices, List<Double> scores, List<Double> trainingErrors, List<Double> validationErrors, List<Double> portfolio, List<Double> priceIntoFuture){
         plotPredictions(actualPrices, predictedPrices);
         plotPortfolio(portfolio);
+        plotCandlesticsIntoFuture(priceIntoFuture);
         //plotScore(scores);
         plotTrainingErrors(trainingErrors);
         plotValidationErrors(validationErrors);
@@ -177,6 +179,22 @@ public class Main {
         // Show the chart
         new SwingWrapper<>(chart).displayChart();
     }
+    private static void plotCandlesticsIntoFuture(List<Double> priceIntoFuture) {
+        // Create Chart
+        XYChart chart = new XYChartBuilder()
+                .width(800)
+                .height(600)
+                .title("Future close")
+                .xAxisTitle("Timeseries")
+                .yAxisTitle("Value")
+                .build();
+
+        // Add data to the chart
+        chart.addSeries("Future close", priceIntoFuture);
+
+        // Show the chart
+        new SwingWrapper<>(chart).displayChart();
+    }
     private static void plotPortfolio(List<Double> portfolio) {
         // Create Chart
         XYChart chart = new XYChartBuilder()
@@ -214,13 +232,13 @@ public class Main {
         List<Double> predictedPrices = new ArrayList<>();
         List<Double> actualPrices = new ArrayList<>();
         List<Double> portfolioList = new ArrayList<>();
+        List<Double> priceIntoFutureList = new ArrayList<>();
         Evaluation eval = new Evaluation(2);
         double wins = 0;
         double losses = 0;
-        double portfolio = 2000;
         //Evaluate the model
         for (int i = 0; i < normalizedTestFeatures.size(); i++) {
-            INDArray predicted = model.output(normalizedTestFeatures.get(i).reshape(1, 4, lookback));
+            INDArray predicted = model.output(normalizedTestFeatures.get(i).reshape(1, params, lookback));
             eval.eval(normalizedTestLabels.get(i).reshape(1, 1, lookback), predicted);
             //To simulate trading
             if(i<normalizedTestFeatures.size()-stepsIntoFuture){
@@ -228,12 +246,6 @@ public class Main {
                 //double fees = (candlestickList.get(i+stepsIntoFuture).getClose() * 0.0006) + (candlestickList.get(i).getClose() * 0.0006);
                 double fees = 0;
                 if(predicted.getDouble(0) > 0.5){
-                    /*if(testLabels.get(i).getDouble(0) == 1){
-                        wins++;
-                    }
-                    else{
-                        losses++;
-                    }*/
                     if(candlestickList.get(i+stepsIntoFuture).getClose() > candlestickList.get(i).getClose()){
                         wins++;
                     }
@@ -245,12 +257,6 @@ public class Main {
                     System.out.println("predicted: " + predicted.getDouble(0) + ". Profit after fees: " + profitAfterFees);
                 }
                 else if(predicted.getDouble(0) < 0.5){
-                    /*if(testLabels.get(i).getDouble(0) == 0){
-                        wins++;
-                    }
-                    else{
-                        losses++;
-                    }*/
                     if(candlestickList.get(i).getClose() > candlestickList.get(i+stepsIntoFuture).getClose()){
                         wins++;
                     }
@@ -264,7 +270,7 @@ public class Main {
                 //Add portfolio value to a list to later see growth
                 portfolioList.add(portfolio);
             }
-
+            priceIntoFutureList.add(candlestickList.get(i+stepsIntoFuture).getClose());
             // Add data to plot
             predictedPrices.add(predicted.getDouble(0));
             actualPrices.add(testLabels.get(i).getDouble(0));
@@ -302,7 +308,7 @@ public class Main {
                 List<INDArray> featuresMinibatch = new ArrayList<>();
                 List<INDArray> labelsMinibatch = new ArrayList<>();
                 for (int j = 0; j < minibatchSize && i + j < trainSize; j++) {
-                    featuresMinibatch.add(normalizedTrainFeatures.get(i + j).reshape(1, 4, lookback));
+                    featuresMinibatch.add(normalizedTrainFeatures.get(i + j).reshape(1, params, lookback));
                     labelsMinibatch.add(normalizedTrainLabels.get(i + j).reshape(1, 1, lookback));  // No reshaping
                 }
                 model.fit(Nd4j.concat(0, featuresMinibatch.toArray(new INDArray[0])), Nd4j.concat(0, labelsMinibatch.toArray(new INDArray[0])));
@@ -313,7 +319,7 @@ public class Main {
             double validationError = 0;
             Evaluation validationEval = new Evaluation(2);  // Changed to Evaluation
             for (int i = 0; i < normalizedValidationFeatures.size(); i++) {
-                INDArray predicted = model.output(normalizedValidationFeatures.get(i).reshape(1, 4, lookback)); // Updated to reflect the lookback period
+                INDArray predicted = model.output(normalizedValidationFeatures.get(i).reshape(1, params, lookback)); // Updated to reflect the lookback period
                 validationEval.eval(normalizedValidationLabels.get(i).reshape(1,1,lookback), predicted);  // No reshaping
             }
             validationError = 1 - validationEval.accuracy();  // Calculate error as 1 - accuracy
@@ -410,12 +416,16 @@ public class Main {
         double[] macdLines = macd.getMacdLine();
         double[] signalLines = macd.getSignalLine();
         double[] histograms = macd.getHistogram();
+        Ema ema200 = Ema.calcEMA(candlesticks, 200);
+        Ema ema100 = Ema.calcEMA(candlesticks, 100);
+        Ema ema50 = Ema.calcEMA(candlesticks, 50);
+        Ema ema20 = Ema.calcEMA(candlesticks, 20);
         System.out.println("loaded a dataset size of " + candlesticks.size());
 
         //Create the features and labels
         for (int j = lookback; j < candlesticks.size() - stepsIntoFuture; j++) {
             // Features now have lookback * 5 size because for each lookback step we have 5 values (open, high, low, close, volume)
-            INDArray features = Nd4j.create(new double[lookback * 4]);
+            INDArray features = Nd4j.create(new double[lookback * params]);
             for (int i = 0; i < lookback; i++) {
                 if (j + stepsIntoFuture < candlesticks.size()) {
                     double currentClosePrice = candlesticks.get(j - i).getClose();
@@ -423,10 +433,14 @@ public class Main {
 
                     double closePriceDifference = currentClosePrice - previousClosePrice; // Considering fees at buying and selling
 
-                    features.putScalar(i * 4 + 0, closePriceDifference);
-                    features.putScalar(i * 4 + 1, macdLines[j - i]);
-                    features.putScalar(i * 4 + 2, signalLines[j - i]);
-                    features.putScalar(i * 4 + 3, histograms[j - i]);
+                    features.putScalar(i * params + 0, closePriceDifference);
+                    features.putScalar(i * params + 1, macdLines[j - i]);
+                    features.putScalar(i * params + 2, signalLines[j - i]);
+                    features.putScalar(i * params + 3, histograms[j - i]);
+                    features.putScalar(i * params + 4, ema200.getValues().get(j - i));
+                    features.putScalar(i * params + 5, ema100.getValues().get(j - i));
+                    features.putScalar(i * params + 6, ema50.getValues().get(j - i));
+                    features.putScalar(i * params + 7, ema20.getValues().get(j - i));
 
                 }
             }
@@ -461,7 +475,7 @@ public class Main {
                 .updater(new Adam())
                 .list()
                 .layer(0, new LSTM.Builder()
-                        .nIn(4)  // Adjusted to account for lookback
+                        .nIn(params)  // Adjusted to account for lookback
                         .nOut(300)
                         .activation(Activation.TANH)
                         .dropOut(dropout)
