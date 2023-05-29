@@ -31,7 +31,8 @@ import java.util.List;
 public class Main {
     static int nEpochs = 25;
     static double dropout = 0.00;
-    static int params = 8;
+    static int params = 6;
+
     static double portfolio = 2000;
 
     public static void main(String[] args) throws IOException {
@@ -417,8 +418,6 @@ public class Main {
         double[] signalLines = macd.getSignalLine();
         double[] histograms = macd.getHistogram();
         Ema ema200 = Ema.calcEMA(candlesticks, 200);
-        Ema ema100 = Ema.calcEMA(candlesticks, 100);
-        Ema ema50 = Ema.calcEMA(candlesticks, 50);
         Ema ema20 = Ema.calcEMA(candlesticks, 20);
         System.out.println("loaded a dataset size of " + candlesticks.size());
 
@@ -438,9 +437,7 @@ public class Main {
                     features.putScalar(i * params + 2, signalLines[j - i]);
                     features.putScalar(i * params + 3, histograms[j - i]);
                     features.putScalar(i * params + 4, ema200.getValues().get(j - i));
-                    features.putScalar(i * params + 5, ema100.getValues().get(j - i));
-                    features.putScalar(i * params + 6, ema50.getValues().get(j - i));
-                    features.putScalar(i * params + 7, ema20.getValues().get(j - i));
+                    features.putScalar(i * params + 5, ema20.getValues().get(j - i));
 
                 }
             }
