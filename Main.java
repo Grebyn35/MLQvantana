@@ -42,7 +42,7 @@ public class Main {
 
         //Add lookback parameters for training
         //Default is 6
-        lookbackList.add(30);
+        lookbackList.add(34);
         //lookbackList.add(14);
         //lookbackList.add(16);
         //lookbackList.add(18);
@@ -57,7 +57,7 @@ public class Main {
         //stepsIntoFutureList.add(5);
         //stepsIntoFutureList.add(6);
 
-        ArrayList<Candlestick> candlesticks = returnCandlestickList("bybit", "ethusdt", "30m", "usdt-perpetual", 40000, "2020-01-01%2000:00:00");
+        ArrayList<Candlestick> candlesticks = returnCandlestickList("bybit", "ethusdt", "30m", "usdt-perpetual", 10000, "2020-01-01%2000:00:00");
         trainModel(candlesticks, lookbackList, stepsIntoFutureList);
     }
     public static void trainModel(ArrayList<Candlestick> candlesticks, ArrayList<Integer> lookbackList, ArrayList<Integer> stepsIntoFutureList){
@@ -298,7 +298,7 @@ public class Main {
     public static ModelTrainingAndEvaluation trainAndEvaluateModel(MultiLayerNetwork model, List<INDArray> normalizedTrainFeatures, List<INDArray> normalizedTrainLabels, List<INDArray> normalizedValidationFeatures, List<INDArray> normalizedValidationLabels, int trainSize, int lookback){
         List<Double> scores = new ArrayList<>();
         //Train the model
-        int minibatchSize = 32; // You can tweak this value
+        int minibatchSize = 36; // You can tweak this value
 
         List<Double> trainingErrors = new ArrayList<>();
         List<Double> validationErrors = new ArrayList<>();
