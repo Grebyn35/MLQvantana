@@ -42,8 +42,8 @@ public class Main {
 
         //Add lookback parameters for training
         //Default is 6
-        lookbackList.add(34);
-        //lookbackList.add(14);
+        lookbackList.add(30);
+        //lookbackList.add(34);
         //lookbackList.add(16);
         //lookbackList.add(18);
         //lookbackList.add(20);
@@ -57,7 +57,7 @@ public class Main {
         //stepsIntoFutureList.add(5);
         //stepsIntoFutureList.add(6);
 
-        ArrayList<Candlestick> candlesticks = returnCandlestickList("bybit", "ethusdt", "30m", "usdt-perpetual", 10000, "2020-01-01%2000:00:00");
+        ArrayList<Candlestick> candlesticks = returnCandlestickList("bybit", "ethusdt", "30m", "usdt-perpetual", 500, "2020-01-01%2000:00:00");
         trainModel(candlesticks, lookbackList, stepsIntoFutureList);
     }
     public static void trainModel(ArrayList<Candlestick> candlesticks, ArrayList<Integer> lookbackList, ArrayList<Integer> stepsIntoFutureList){
@@ -112,6 +112,7 @@ public class Main {
                 List<Double> predictedPrices = predictedAndActualPrices.getPredictedPrices();
                 List<Double> portfolio = predictedAndActualPrices.getPortfolio();
                 List<Double> priceIntoFuture = predictedAndActualPrices.getPriceIntoFuture();
+                System.out.println(priceIntoFuture);
 
                 // Step 7: Show the results
                 showResults(actualPrices, predictedPrices, scores, trainingErrors, validationErrors, portfolio, priceIntoFuture);
@@ -282,6 +283,7 @@ public class Main {
         predictedAndActualPrices.setPredictedPrices(predictedPrices);
         predictedAndActualPrices.setPortfolio(portfolioList);
         predictedAndActualPrices.setActualPrices(actualPrices);
+        predictedAndActualPrices.setPriceIntoFuture(priceIntoFutureList);
         double accuracy = eval.accuracy();
         double precision = eval.precision();
         double recall = eval.recall();
@@ -298,7 +300,7 @@ public class Main {
     public static ModelTrainingAndEvaluation trainAndEvaluateModel(MultiLayerNetwork model, List<INDArray> normalizedTrainFeatures, List<INDArray> normalizedTrainLabels, List<INDArray> normalizedValidationFeatures, List<INDArray> normalizedValidationLabels, int trainSize, int lookback){
         List<Double> scores = new ArrayList<>();
         //Train the model
-        int minibatchSize = 36; // You can tweak this value
+        int minibatchSize = 32; // You can tweak this value
 
         List<Double> trainingErrors = new ArrayList<>();
         List<Double> validationErrors = new ArrayList<>();
