@@ -31,7 +31,7 @@ import java.util.List;
 public class Main {
     static int nEpochs = 25;
     static double dropout = 0.00;
-    static int params = 7;
+    static int params = 6;
 
     static double portfolio = 2000;
 
@@ -299,7 +299,7 @@ public class Main {
     public static ModelTrainingAndEvaluation trainAndEvaluateModel(MultiLayerNetwork model, List<INDArray> normalizedTrainFeatures, List<INDArray> normalizedTrainLabels, List<INDArray> normalizedValidationFeatures, List<INDArray> normalizedValidationLabels, int trainSize, int lookback){
         List<Double> scores = new ArrayList<>();
         //Train the model
-        int minibatchSize = 32; // You can tweak this value
+        int minibatchSize = 40; // You can tweak this value
 
         List<Double> trainingErrors = new ArrayList<>();
         List<Double> validationErrors = new ArrayList<>();
@@ -413,17 +413,13 @@ public class Main {
         List<INDArray> labelList = new ArrayList<>();
         List<Candlestick> candlestickList = new ArrayList<>();
 
-        ATR atr = ATR.calculateATR(candlesticks, 14);
-
-        candlesticks.subList(0, 14).clear();
-
         MACD macd = MACD.calculateMACD(new ArrayList<>(candlesticks), 12, 26, 9, candlesticks.size());
 
         double[] macdLines = macd.getMacdLine();
         double[] signalLines = macd.getSignalLine();
         double[] histograms = macd.getHistogram();
         Ema ema200 = Ema.calcEMA(candlesticks, 200);
-        Ema ema20 = Ema.calcEMA(candlesticks, 20);
+        Ema ema12 = Ema.calcEMA(candlesticks, 12);
         System.out.println("loaded a dataset size of " + candlesticks.size());
 
         //Create the features and labels
@@ -442,8 +438,7 @@ public class Main {
                     features.putScalar(i * params + 2, signalLines[j - i]);
                     features.putScalar(i * params + 3, histograms[j - i]);
                     features.putScalar(i * params + 4, ema200.getValues().get(j - i));
-                    features.putScalar(i * params + 5, ema20.getValues().get(j - i));
-                    features.putScalar(i * params + 6, atr.getValues().get(j - i));
+                    features.putScalar(i * params + 5, ema12.getValues().get(j - i));
 
                 }
             }
