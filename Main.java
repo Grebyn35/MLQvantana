@@ -57,7 +57,7 @@ public class Main {
         //stepsIntoFutureList.add(5);
         //stepsIntoFutureList.add(6);
 
-        ArrayList<Candlestick> candlesticks = returnCandlestickList("bybit", "ethusdt", "30m", "usdt-perpetual", 10000, "2020-01-01%2000:00:00");
+        ArrayList<Candlestick> candlesticks = returnCandlestickList("bybit", "ethusdt", "30m", "usdt-perpetual", 40000, "2020-01-01%2000:00:00");
         trainModel(candlesticks, lookbackList, stepsIntoFutureList);
     }
     public static void trainModel(ArrayList<Candlestick> candlesticks, ArrayList<Integer> lookbackList, ArrayList<Integer> stepsIntoFutureList){
@@ -419,7 +419,7 @@ public class Main {
         double[] signalLines = macd.getSignalLine();
         double[] histograms = macd.getHistogram();
         Ema ema200 = Ema.calcEMA(candlesticks, 200);
-        Ema ema12 = Ema.calcEMA(candlesticks, 12);
+        Ema ema9 = Ema.calcEMA(candlesticks, 9);
         System.out.println("loaded a dataset size of " + candlesticks.size());
 
         //Create the features and labels
@@ -438,7 +438,7 @@ public class Main {
                     features.putScalar(i * params + 2, signalLines[j - i]);
                     features.putScalar(i * params + 3, histograms[j - i]);
                     features.putScalar(i * params + 4, ema200.getValues().get(j - i));
-                    features.putScalar(i * params + 5, ema12.getValues().get(j - i));
+                    features.putScalar(i * params + 5, ema9.getValues().get(j - i));
 
                 }
             }
