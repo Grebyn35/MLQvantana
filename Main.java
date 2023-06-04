@@ -419,7 +419,7 @@ public class Main {
         double[] signalLines = macd.getSignalLine();
         double[] histograms = macd.getHistogram();
         Ema ema200 = Ema.calcEMA(candlesticks, 200);
-        Ema ema9 = Ema.calcEMA(candlesticks, 9);
+        Ema emaExperimental = Ema.calcEMA(candlesticks, 30);
         System.out.println("loaded a dataset size of " + candlesticks.size());
 
         //Create the features and labels
@@ -438,7 +438,7 @@ public class Main {
                     features.putScalar(i * params + 2, signalLines[j - i]);
                     features.putScalar(i * params + 3, histograms[j - i]);
                     features.putScalar(i * params + 4, ema200.getValues().get(j - i));
-                    features.putScalar(i * params + 5, ema9.getValues().get(j - i));
+                    features.putScalar(i * params + 5, emaExperimental.getValues().get(j - i));
 
                 }
             }
