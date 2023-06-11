@@ -244,8 +244,8 @@ public class Main {
             //To simulate trading
             if(i<normalizedTestFeatures.size()-stepsIntoFuture){
                 System.out.println("(current close: " + candlestickList.get(i).getClose() + " | future close: "  + candlestickList.get(i+stepsIntoFuture).getClose() + "). label: " + testLabels.get(i).getDouble(0) + ". predicted: " + predicted.getDouble(0));
-                //double fees = (candlestickList.get(i+stepsIntoFuture).getClose() * 0.0006) + (candlestickList.get(i).getClose() * 0.0006);
-                double fees = 0;
+                double fees = (candlestickList.get(i+stepsIntoFuture).getClose() * 0.0006) + (candlestickList.get(i).getClose() * 0.0006);
+                //double fees = 0;
                 if(predicted.getDouble(0) > 0.5){
                     if(candlestickList.get(i+stepsIntoFuture).getClose() > candlestickList.get(i).getClose()){
                         wins++;
