@@ -42,7 +42,7 @@ public class Main {
 
         //Add lookback parameters for training
         //Default is 6
-        lookbackList.add(34);
+        lookbackList.add(30);
         //lookbackList.add(34);
         //lookbackList.add(16);
         //lookbackList.add(18);
@@ -57,7 +57,7 @@ public class Main {
         //stepsIntoFutureList.add(5);
         //stepsIntoFutureList.add(6);
 
-        ArrayList<Candlestick> candlesticks = returnCandlestickList("bybit", "ethusdt", "30m", "usdt-perpetual", 6000, "2020-01-01%2000:00:00");
+        ArrayList<Candlestick> candlesticks = returnCandlestickList("bybit", "ethusdt", "30m", "usdt-perpetual", 40000, "2020-01-01%2000:00:00");
         trainModel(candlesticks, lookbackList, stepsIntoFutureList);
     }
     public static void trainModel(ArrayList<Candlestick> candlesticks, ArrayList<Integer> lookbackList, ArrayList<Integer> stepsIntoFutureList){
@@ -112,7 +112,6 @@ public class Main {
                 List<Double> predictedPrices = predictedAndActualPrices.getPredictedPrices();
                 List<Double> portfolio = predictedAndActualPrices.getPortfolio();
                 List<Double> priceIntoFuture = predictedAndActualPrices.getPriceIntoFuture();
-                System.out.println(priceIntoFuture);
 
                 // Step 7: Show the results
                 showResults(actualPrices, predictedPrices, scores, trainingErrors, validationErrors, portfolio, priceIntoFuture);
@@ -245,8 +244,8 @@ public class Main {
             //To simulate trading
             if(i<normalizedTestFeatures.size()-stepsIntoFuture){
                 System.out.println("(current close: " + candlestickList.get(i).getClose() + " | future close: "  + candlestickList.get(i+stepsIntoFuture).getClose() + "). label: " + testLabels.get(i).getDouble(0) + ". predicted: " + predicted.getDouble(0));
-                //double fees = (candlestickList.get(i+stepsIntoFuture).getClose() * 0.0006) + (candlestickList.get(i).getClose() * 0.0006);
-                double fees = 0;
+                double fees = (candlestickList.get(i+stepsIntoFuture).getClose() * 0.0006) + (candlestickList.get(i).getClose() * 0.0006);
+                //double fees = 0;
                 if(predicted.getDouble(0) > 0.5){
                     if(candlestickList.get(i+stepsIntoFuture).getClose() > candlestickList.get(i).getClose()){
                         wins++;
@@ -300,7 +299,7 @@ public class Main {
     public static ModelTrainingAndEvaluation trainAndEvaluateModel(MultiLayerNetwork model, List<INDArray> normalizedTrainFeatures, List<INDArray> normalizedTrainLabels, List<INDArray> normalizedValidationFeatures, List<INDArray> normalizedValidationLabels, int trainSize, int lookback){
         List<Double> scores = new ArrayList<>();
         //Train the model
-        int minibatchSize = 36; // You can tweak this value
+        int minibatchSize = 40; // You can tweak this value
 
         List<Double> trainingErrors = new ArrayList<>();
         List<Double> validationErrors = new ArrayList<>();
@@ -420,7 +419,7 @@ public class Main {
         double[] signalLines = macd.getSignalLine();
         double[] histograms = macd.getHistogram();
         Ema ema200 = Ema.calcEMA(candlesticks, 200);
-        Ema ema20 = Ema.calcEMA(candlesticks, 9);
+        Ema emaExperimental = Ema.calcEMA(candlesticks, 30);
         System.out.println("loaded a dataset size of " + candlesticks.size());
 
         //Create the features and labels
@@ -439,7 +438,7 @@ public class Main {
                     features.putScalar(i * params + 2, signalLines[j - i]);
                     features.putScalar(i * params + 3, histograms[j - i]);
                     features.putScalar(i * params + 4, ema200.getValues().get(j - i));
-                    features.putScalar(i * params + 5, ema20.getValues().get(j - i));
+                    features.putScalar(i * params + 5, emaExperimental.getValues().get(j - i));
 
                 }
             }
