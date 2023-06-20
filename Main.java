@@ -57,7 +57,7 @@ public class Main {
         //stepsIntoFutureList.add(5);
         //stepsIntoFutureList.add(6);
 
-        ArrayList<Candlestick> candlesticks = returnCandlestickList("bybit", "ethusdt", "30m", "usdt-perpetual", 40000, "2020-01-01%2000:00:00");
+        ArrayList<Candlestick> candlesticks = returnCandlestickList("bybit", "ethusdt", "4h", "usdt-perpetual", 40000, "2020-01-01%2000:00:00");
         trainModel(candlesticks, lookbackList, stepsIntoFutureList);
     }
     public static void trainModel(ArrayList<Candlestick> candlesticks, ArrayList<Integer> lookbackList, ArrayList<Integer> stepsIntoFutureList){
