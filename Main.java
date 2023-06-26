@@ -52,7 +52,7 @@ public class Main {
         //Default is 3
         //stepsIntoFutureList.add(1);
         //stepsIntoFutureList.add(2);
-        stepsIntoFutureList.add(6);
+        stepsIntoFutureList.add(2);
         //stepsIntoFutureList.add(4);
         //stepsIntoFutureList.add(5);
         //stepsIntoFutureList.add(6);
